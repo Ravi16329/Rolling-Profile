@@ -1,37 +1,86 @@
-const sections = document.querySelectorAll('.section');
+const sections = document.querySelectorAll(".section");
 let current = 0;
+let autoScroll;
 
-function showSection(index) {
-  if (index < 0 || index >= sections.length) return;
-  
-  sections.forEach((sec, i) => {
-    sec.classList.remove('show');
-    sec.style.zIndex = i === index ? 1 : 0;
-  });
+// Apply 3D perspective to body
+document.body.style.perspective = "1000px";
 
-  sections[index].classList.add('show');
-  current = index;
-}
+// Initial load
+showSection(current, true);
 
-// Button controls
-document.getElementById("nextBtn").addEventListener("click", () => showSection(current + 1));
-document.getElementById("prevBtn").addEventListener("click", () => showSection(current - 1));
+// Button navigation
+document.getElementById("nextBtn").addEventListener("click", () => {
+  if (current < sections.length - 1) {
+    showSection(++current);
+    restartAutoScroll();
+  }
+});
 
-// Scroll wheel
+document.getElementById("prevBtn").addEventListener("click", () => {
+  if (current > 0) {
+    showSection(--current);
+    restartAutoScroll();
+  }
+});
+
+// Scroll navigation
 let scrollTimeout;
 window.addEventListener("wheel", (e) => {
   clearTimeout(scrollTimeout);
   scrollTimeout = setTimeout(() => {
-    if (e.deltaY > 0) showSection(current + 1);
-    else showSection(current - 1);
-  }, 100);
+    if (e.deltaY > 0 && current < sections.length - 1) {
+      showSection(++current);
+    } else if (e.deltaY < 0 && current > 0) {
+      showSection(--current);
+    }
+    restartAutoScroll();
+  }, 200);
 });
 
-// Touch support (optional)
-let touchStartY = 0;
-window.addEventListener("touchstart", e => touchStartY = e.touches[0].clientY);
-window.addEventListener("touchend", e => {
-  const delta = e.changedTouches[0].clientY - touchStartY;
-  if (delta > 50) showSection(current - 1);
-  if (delta < -50) showSection(current + 1);
-});
+// Rolling animation
+function showSection(index, instant = false) {
+  sections.forEach((sec, i) => {
+    if (i === index) {
+      gsap.fromTo(
+        sec,
+        {
+          rotationX: -120,
+          opacity: 0,
+          transformOrigin: "top center",
+          y: -200,
+          display: "block"
+        },
+        {
+          duration: instant ? 0 : 2.5,
+          rotationX: 0,
+          opacity: 1,
+          y: 0,
+          ease: "back.out(1.7)",
+          onStart: () => {
+            sec.style.display = "block";
+            sec.style.zIndex = 1;
+          }
+        }
+      );
+    } else {
+      sec.style.zIndex = 0;
+      sec.style.opacity = 0;
+      sec.style.display = "none";
+    }
+  });
+}
+
+// Auto-scroll every 5 seconds
+function startAutoScroll() {
+  autoScroll = setInterval(() => {
+    current = (current + 1) % sections.length;
+    showSection(current);
+  }, 5000);
+}
+
+function restartAutoScroll() {
+  clearInterval(autoScroll);
+  startAutoScroll();
+}
+
+startAutoScroll();
